@@ -7,7 +7,7 @@
 - ✅ Git репозиторий инициализирован
 - ✅ Все файлы закоммичены (3 коммита)
 - ✅ Все URLs обновлены на JonyVibeAI
-- ✅ Remote настроен на https://github.com/JonyVibeAI/cal-ai-bot.git
+- ✅ Remote настроен на https://github.com/JonyVibeAI/CALAI_tg_bot.git
 - ✅ 42 файла готовы к пушу
 
 ## 📝 Коммиты готовы к пушу:
@@ -26,7 +26,7 @@
 
 2. Заполни:
    - **Owner:** JonyVibeAI (уже выбрано)
-   - **Repository name:** `cal-ai-bot`
+   - **Repository name:** `CALAI_tg_bot`
    - **Description:** `🔥 AI Telegram бот для отслеживания калорий`
    - Выбери: **Public** ✅
    - ⚠️ **НЕ** ставь галочки на:
@@ -65,7 +65,7 @@ git push -u origin main
 2. Или используй SSH:
    ```bash
    # Измени remote на SSH
-   git remote set-url origin git@github.com:JonyVibeAI/cal-ai-bot.git
+   git remote set-url origin git@github.com:JonyVibeAI/CALAI_tg_bot.git
    
    # Настрой SSH ключ если еще нет
    # https://docs.github.com/en/authentication/connecting-to-github-with-ssh
@@ -74,7 +74,7 @@ git push -u origin main
 ### Шаг 3: Проверь на GitHub
 
 После успешного пуша открой:
-https://github.com/JonyVibeAI/cal-ai-bot
+https://github.com/JonyVibeAI/CALAI_tg_bot
 
 Должны увидеть:
 - ✅ README.md с описанием проекта
@@ -141,8 +141,8 @@ https://github.com/JonyVibeAI/cal-ai-bot
 
 **Локально:**
 ```bash
-git clone https://github.com/JonyVibeAI/cal-ai-bot.git
-cd cal-ai-bot
+git clone https://github.com/JonyVibeAI/CALAI_tg_bot.git
+cd CALAI_tg_bot
 cp .env.example .env
 # Заполни .env своими ключами
 npm run db:up
@@ -151,7 +151,7 @@ npm run dev
 
 **На сервере (автоматически):**
 ```bash
-wget https://raw.githubusercontent.com/JonyVibeAI/cal-ai-bot/main/timeweb-install.sh
+wget https://raw.githubusercontent.com/JonyVibeAI/CALAI_tg_bot/main/timeweb-install.sh
 sudo bash timeweb-install.sh
 ```
 
@@ -214,6 +214,6 @@ git status
 ## 🎉 Готово!
 
 После выполнения всех шагов твой проект будет доступен по адресу:
-**https://github.com/JonyVibeAI/cal-ai-bot**
+**https://github.com/JonyVibeAI/CALAI_tg_bot**
 
 Можешь деплоить на TimeWeb! Инструкция: [DEPLOY_TIMEWEB.md](DEPLOY_TIMEWEB.md)

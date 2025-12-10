@@ -29,8 +29,8 @@ Telegram бот для автоматического отслеживания �
 
 ```bash
 # 1. Клонируй репозиторий
-git clone https://github.com/JonyVibeAI/cal-ai-bot.git
-cd cal-ai-bot
+git clone https://github.com/JonyVibeAI/CALAI_tg_bot.git
+cd CALAI_tg_bot
 
 # 2. Установи зависимости
 cd backend
@@ -101,8 +101,8 @@ OPENAI_MODEL_VISION=gpt-4o
 ssh user@your-server.com
 
 # 2. Клонируй проект
-git clone https://github.com/JonyVibeAI/cal-ai-bot.git
-cd cal-ai-bot
+git clone https://github.com/JonyVibeAI/CALAI_tg_bot.git
+cd CALAI_tg_bot
 
 # 3. Настрой .env
 cp .env.example .env
@@ -125,7 +125,7 @@ cd backend && npm install
 npm run build
 
 # 3. Настрой PM2
-pm2 start dist/index.js --name cal-ai-bot
+pm2 start dist/index.js --name CALAI_tg_bot
 
 # 4. Автозапуск
 pm2 startup
@@ -161,7 +161,7 @@ npx prisma migrate dev   # Создать миграцию
 ## 📁 Структура проекта
 
 ```
-cal-ai-bot/
+CALAI_tg_bot/
 ├── backend/
 │   ├── src/
 │   │   ├── ai/              # OpenAI интеграция

@@ -45,7 +45,7 @@ echo "📦 Установка PM2..."
 npm install -g pm2
 
 # Создание директории
-PROJECT_DIR="/var/www/cal-ai-bot"
+PROJECT_DIR="/var/www/CALAI_tg_bot"
 echo "📁 Создание директории проекта: $PROJECT_DIR"
 mkdir -p $PROJECT_DIR
 cd $PROJECT_DIR
@@ -112,7 +112,7 @@ ufw --force enable
 # Настройка автозапуска
 echo ""
 echo "🔄 Настройка автозапуска..."
-cat > /etc/systemd/system/cal-ai-bot.service << EOF
+cat > /etc/systemd/system/CALAI_tg_bot.service << EOF
 [Unit]
 Description=Cal AI Telegram Bot
 After=docker.service
@@ -131,7 +131,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload
-systemctl enable cal-ai-bot.service
+systemctl enable CALAI_tg_bot.service
 
 # Создание директории для бэкапов
 mkdir -p backups

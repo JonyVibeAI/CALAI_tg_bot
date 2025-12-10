@@ -20,8 +20,8 @@
 
 ```bash
 # Клонируй проект
-git clone https://github.com/JonyVibeAI/cal-ai-bot.git
-cd cal-ai-bot
+git clone https://github.com/JonyVibeAI/CALAI_tg_bot.git
+cd CALAI_tg_bot
 
 # Установи зависимости
 cd backend

@@ -30,5 +30,5 @@
 - PostgreSQL + Prisma ORM
 - Docker & Docker Compose
 
-[Unreleased]: https://github.com/JonyVibeAI/cal-ai-bot/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/JonyVibeAI/cal-ai-bot/releases/tag/v1.0.0
+[Unreleased]: https://github.com/JonyVibeAI/CALAI_tg_bot/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/JonyVibeAI/CALAI_tg_bot/releases/tag/v1.0.0

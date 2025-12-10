@@ -39,7 +39,7 @@ git status
 ### Шаг 1: Создай репозиторий на GitHub
 
 1. Перейди на https://github.com/new
-2. Название: `cal-ai-bot` (или свое)
+2. Название: `CALAI_tg_bot` (или свое)
 3. Описание: `🔥 AI Telegram-трекер калорий`
 4. Public или Private
 5. **НЕ** создавай README, .gitignore, LICENSE (они уже есть)
@@ -61,7 +61,7 @@ git add .
 git commit -m "Initial commit: AI calorie tracker bot"
 
 # Добавь remote
-git remote add origin https://github.com/JonyVibeAI/cal-ai-bot.git
+git remote add origin https://github.com/JonyVibeAI/CALAI_tg_bot.git
 
 # Загрузи на GitHub
 git branch -M main
@@ -121,11 +121,11 @@ git push origin v1.0.0
 
 В README.md замени:
 ```
-git clone https://github.com/JonyVibeAI/cal-ai-bot.git
+git clone https://github.com/JonyVibeAI/CALAI_tg_bot.git
 ```
 на реальный URL:
 ```
-git clone https://github.com/JonyVibeAI/cal-ai-bot.git
+git clone https://github.com/JonyVibeAI/CALAI_tg_bot.git
 ```
 
 Закоммить и запушить:
@@ -140,9 +140,9 @@ git push
 ### 1. Добавь бейджи в README
 
 ```markdown
-[![GitHub stars](https://img.shields.io/github/stars/YOUR_USERNAME/cal-ai-bot.svg)](https://github.com/YOUR_USERNAME/cal-ai-bot/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/YOUR_USERNAME/cal-ai-bot.svg)](https://github.com/YOUR_USERNAME/cal-ai-bot/network)
-[![GitHub issues](https://img.shields.io/github/issues/YOUR_USERNAME/cal-ai-bot.svg)](https://github.com/YOUR_USERNAME/cal-ai-bot/issues)
+[![GitHub stars](https://img.shields.io/github/stars/YOUR_USERNAME/CALAI_tg_bot.svg)](https://github.com/YOUR_USERNAME/CALAI_tg_bot/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/YOUR_USERNAME/CALAI_tg_bot.svg)](https://github.com/YOUR_USERNAME/CALAI_tg_bot/network)
+[![GitHub issues](https://img.shields.io/github/issues/YOUR_USERNAME/CALAI_tg_bot.svg)](https://github.com/YOUR_USERNAME/CALAI_tg_bot/issues)
 ```
 
 ### 2. Поделись проектом

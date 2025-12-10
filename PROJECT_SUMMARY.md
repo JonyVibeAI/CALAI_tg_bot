@@ -5,7 +5,7 @@
 ## 📁 Структура проекта
 
 ```
-cal-ai-bot/
+CALAI_tg_bot/
 ├── 📄 README.md                    # Главная документация
 ├── 📄 QUICKSTART.md               # Быстрый старт за 5 минут
 ├── 📄 PUBLISH.md                  # Инструкция по публикации на GitHub
@@ -145,7 +145,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 git init
 git add .
 git commit -m "Initial commit"
-git remote add origin https://github.com/JonyVibeAI/cal-ai-bot.git
+git remote add origin https://github.com/JonyVibeAI/CALAI_tg_bot.git
 git push -u origin main
 ```
 
@@ -155,7 +155,7 @@ git push -u origin main
 **А) Автоматически (рекомендуется):**
 ```bash
 # На TimeWeb сервере
-wget https://raw.githubusercontent.com/YOUR_USERNAME/cal-ai-bot/main/timeweb-install.sh
+wget https://raw.githubusercontent.com/YOUR_USERNAME/CALAI_tg_bot/main/timeweb-install.sh
 sudo bash timeweb-install.sh
 ```
 

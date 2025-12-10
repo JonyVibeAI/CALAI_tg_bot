@@ -68,11 +68,11 @@ npm install -g pm2
 
 ```bash
 # 1. Создаем директорию для проекта
-mkdir -p /var/www/cal-ai-bot
-cd /var/www/cal-ai-bot
+mkdir -p /var/www/CALAI_tg_bot
+cd /var/www/CALAI_tg_bot
 
 # 2. Клонируем репозиторий
-git clone https://github.com/JonyVibeAI/cal-ai-bot.git .
+git clone https://github.com/JonyVibeAI/CALAI_tg_bot.git .
 
 # 3. Создаем .env файл
 cp .env.example .env
@@ -114,8 +114,8 @@ GRANT ALL PRIVILEGES ON DATABASE calai TO calai;
 
 # 3. Клонируем проект
 cd /var/www
-git clone https://github.com/JonyVibeAI/cal-ai-bot.git
-cd cal-ai-bot
+git clone https://github.com/JonyVibeAI/CALAI_tg_bot.git
+cd CALAI_tg_bot
 
 # 4. Настраиваем .env
 cp .env.example .env
@@ -139,7 +139,7 @@ npm run build
 npx prisma migrate deploy
 
 # 7. Запускаем с PM2
-pm2 start dist/index.js --name cal-ai-bot
+pm2 start dist/index.js --name CALAI_tg_bot
 
 # 8. Настраиваем автозапуск
 pm2 startup
@@ -177,16 +177,16 @@ docker-compose logs -f postgres # только БД
 pm2 status
 
 # Логи
-pm2 logs cal-ai-bot
+pm2 logs CALAI_tg_bot
 
 # Перезапуск
-pm2 restart cal-ai-bot
+pm2 restart CALAI_tg_bot
 
 # Остановка
-pm2 stop cal-ai-bot
+pm2 stop CALAI_tg_bot
 
 # Удаление из PM2
-pm2 delete cal-ai-bot
+pm2 delete CALAI_tg_bot
 
 # Мониторинг
 pm2 monit
@@ -217,7 +217,7 @@ ufw status
 adduser botuser
 
 # Переносим проект
-chown -R botuser:botuser /var/www/cal-ai-bot
+chown -R botuser:botuser /var/www/CALAI_tg_bot
 
 # Запускаем от пользователя botuser
 su - botuser
@@ -239,7 +239,7 @@ chown botuser:botuser .env
 docker-compose logs -f --tail=100
 
 # PM2
-pm2 logs cal-ai-bot --lines 100
+pm2 logs CALAI_tg_bot --lines 100
 
 # Системные логи
 journalctl -u docker -f
@@ -269,7 +269,7 @@ cat .env
 # Проверь логи
 docker-compose logs bot
 # или
-pm2 logs cal-ai-bot
+pm2 logs CALAI_tg_bot
 
 # Проверь подключение к БД
 docker-compose exec postgres psql -U calai -d calai
@@ -311,7 +311,7 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ### Docker
 
 ```bash
-cd /var/www/cal-ai-bot
+cd /var/www/CALAI_tg_bot
 git pull
 docker-compose down
 docker-compose up -d --build
@@ -321,13 +321,13 @@ docker-compose logs -f bot
 ### PM2
 
 ```bash
-cd /var/www/cal-ai-bot
+cd /var/www/CALAI_tg_bot
 git pull
 cd backend
 npm install
 npm run build
-pm2 restart cal-ai-bot
-pm2 logs cal-ai-bot
+pm2 restart CALAI_tg_bot
+pm2 logs CALAI_tg_bot
 ```
 
 ## 📈 Мониторинг производительности
@@ -387,7 +387,7 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /var/www/cal-ai-bot
+            cd /var/www/CALAI_tg_bot
             git pull
             docker-compose up -d --build
 ```
