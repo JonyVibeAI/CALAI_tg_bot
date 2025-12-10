@@ -16,9 +16,6 @@ export const config = {
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN!,
   openaiModelText: process.env.OPENAI_MODEL_TEXT || 'gpt-4o-mini',
   openaiModelVision: process.env.OPENAI_MODEL_VISION || 'gpt-4o',
+  // Прокси для OpenAI (нужен для работы из России)
+  openaiBaseUrl: process.env.OPENAI_BASE_URL || undefined,
 };
-
-
-
-
-

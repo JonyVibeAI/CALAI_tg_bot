@@ -2,9 +2,16 @@ import OpenAI from 'openai';
 import { config } from '../config/env';
 import { ParsedFoodItem } from '../types';
 
+// Создаём клиент с опциональным прокси
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
+  baseURL: config.openaiBaseUrl, // Для прокси (например, openrouter.ai)
 });
+
+console.log('🤖 OpenAI клиент инициализирован');
+if (config.openaiBaseUrl) {
+  console.log('🌐 Используется прокси:', config.openaiBaseUrl);
+}
 
 export async function parseMealFromText(description: string): Promise<ParsedFoodItem[]> {
   try {
@@ -17,17 +24,19 @@ For each food item, estimate:
 - fat: fat in grams  
 - carbs: carbs in grams
 
-Return ONLY a JSON array of items, no other text. Example format:
-[
-  {
-    "name": "Chicken breast",
-    "grams": 150,
-    "calories": 248,
-    "protein": 46.5,
-    "fat": 5.4,
-    "carbs": 0
-  }
-]`;
+Return ONLY a JSON object with "items" array, no other text. Example format:
+{
+  "items": [
+    {
+      "name": "Chicken breast",
+      "grams": 150,
+      "calories": 248,
+      "protein": 46.5,
+      "fat": 5.4,
+      "carbs": 0
+    }
+  ]
+}`;
 
     const response = await openai.chat.completions.create({
       model: config.openaiModelText,
@@ -35,7 +44,6 @@ Return ONLY a JSON array of items, no other text. Example format:
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Parse this meal: ${description}` }
       ],
-      response_format: { type: 'json_object' },
       temperature: 0.3,
     });
 
@@ -44,7 +52,13 @@ Return ONLY a JSON array of items, no other text. Example format:
       throw new Error('Нет ответа от OpenAI');
     }
 
-    const parsed = JSON.parse(content);
+    // Извлекаем JSON
+    let jsonStr = content.trim();
+    if (jsonStr.startsWith('```')) {
+      jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
+    }
+
+    const parsed = JSON.parse(jsonStr);
     const items = Array.isArray(parsed) ? parsed : (parsed.items || []);
     
     return items.map((item: any) => ({
@@ -116,10 +130,8 @@ Respond ONLY with valid JSON in this exact format:
 
     console.log('📝 Ответ OpenAI:', content);
 
-    // Извлекаем JSON из ответа (может быть обёрнут в ```json ... ```)
+    // Извлекаем JSON из ответа
     let jsonStr = content.trim();
-    
-    // Убираем markdown code blocks если есть
     if (jsonStr.startsWith('```')) {
       jsonStr = jsonStr.replace(/```json?\n?/g, '').replace(/```\n?$/g, '').trim();
     }
