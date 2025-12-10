@@ -5,7 +5,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
+# Install all dependencies for build
 RUN npm ci
 
 # Copy prisma schema
@@ -28,8 +28,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install production dependencies only
-RUN npm ci --only=production
+# Install ONLY production dependencies
+RUN npm install --omit=dev
 
 # Copy prisma schema and generate client
 COPY prisma ./prisma/
@@ -38,18 +38,12 @@ RUN npx prisma generate
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
 
-# Expose port
+# Expose port for health check
 EXPOSE 4000
 
-# Health check
+# Health check endpoint
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
   CMD node -e "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start server
 CMD ["npm", "start"]
-
-
-
-
-
-
