@@ -61,11 +61,11 @@ Return ONLY a JSON array of items, no other text. Example format:
   }
 }
 
-export async function parseMealFromImage(imageUrl: string): Promise<{items: ParsedFoodItem[], mealType: string}> {
+export async function parseMealFromImage(imageDataUri: string): Promise<{items: ParsedFoodItem[], mealType: string}> {
   try {
     const systemPrompt = `You are a nutrition assistant analyzing food images. 
 Identify all food items in the image and estimate:
-- name: the food name
+- name: the food name (in Russian if possible)
 - grams: estimated portion size in grams
 - calories: total calories for that portion
 - protein: protein in grams
@@ -80,19 +80,21 @@ Also determine the meal type based on the food:
 
 Return ONLY a JSON object. Example:
 {
-  "mealType": "BREAKFAST",
+  "mealType": "SNACK",
   "items": [
     {
-      "name": "Fried eggs",
-      "grams": 120,
-      "calories": 180,
-      "protein": 18,
-      "fat": 27,
-      "carbs": 2
+      "name": "Twix шоколадный батончик",
+      "grams": 50,
+      "calories": 250,
+      "protein": 2,
+      "fat": 12,
+      "carbs": 33
     }
   ]
 }`;
 
+    console.log('🤖 Отправляю запрос в OpenAI Vision...');
+    
     const response = await openai.chat.completions.create({
       model: config.openaiModelVision,
       messages: [
@@ -110,7 +112,8 @@ Return ONLY a JSON object. Example:
             {
               type: 'image_url',
               image_url: {
-                url: imageUrl,
+                url: imageDataUri,
+                detail: 'low'
               }
             }
           ]
@@ -121,10 +124,14 @@ Return ONLY a JSON object. Example:
       max_tokens: 1000,
     });
 
+    console.log('✓ Получен ответ от OpenAI');
+
     const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error('Нет ответа от OpenAI Vision');
     }
+
+    console.log('📝 Парсинг ответа:', content.substring(0, 200));
 
     const parsed = JSON.parse(content);
     const items = (parsed.items || []).map((item: any) => ({
@@ -142,11 +149,10 @@ Return ONLY a JSON object. Example:
     };
   } catch (error) {
     console.error('✗ Ошибка анализа фото:', error);
+    if (error instanceof Error) {
+      console.error('✗ Детали ошибки:', error.message);
+      console.error('✗ Stack:', error.stack);
+    }
     throw new Error('Не удалось распознать еду на фото');
   }
 }
-
-
-
-
-

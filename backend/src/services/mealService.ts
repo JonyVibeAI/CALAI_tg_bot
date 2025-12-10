@@ -49,8 +49,8 @@ export async function createMeal(data: CreateMealData): Promise<MealWithItems> {
 export async function createMealFromText(
   userId: number,
   date: Date,
-  type: MealType,
-  description: string
+  description: string,
+  type: MealType
 ): Promise<MealWithItems> {
   const items = await parseMealFromText(description);
   
@@ -66,9 +66,9 @@ export async function createMealFromText(
 export async function createMealFromImage(
   userId: number,
   date: Date,
-  imageUrl: string
+  imageDataUri: string
 ): Promise<MealWithItems> {
-  const { items, mealType } = await parseMealFromImage(imageUrl);
+  const { items, mealType } = await parseMealFromImage(imageDataUri);
   
   return createMeal({
     userId,
@@ -122,7 +122,7 @@ export async function getTodayMeals(userId: number): Promise<TodayStats> {
   };
 }
 
-export async function getMealsByDate(userId: number, date: string): Promise<TodayStats> {
+export async function getMealsByDate(userId: number, date: Date | string): Promise<TodayStats> {
   const startDate = new Date(date);
   startDate.setHours(0, 0, 0, 0);
   
@@ -165,16 +165,18 @@ export async function getMealsByDate(userId: number, date: string): Promise<Toda
   };
 }
 
-export async function deleteMeal(mealId: number, userId: number): Promise<boolean> {
-  const meal = await prisma.meal.findFirst({
-    where: {
-      id: mealId,
-      userId,
-    },
-  });
+export async function deleteMeal(mealId: number, userId?: number): Promise<boolean> {
+  if (userId) {
+    const meal = await prisma.meal.findFirst({
+      where: {
+        id: mealId,
+        userId,
+      },
+    });
 
-  if (!meal) {
-    return false;
+    if (!meal) {
+      return false;
+    }
   }
 
   await prisma.meal.delete({
@@ -190,8 +192,3 @@ export function determineMealType(hour: number): MealType {
   if (hour >= 16 && hour < 22) return 'DINNER';
   return 'SNACK';
 }
-
-
-
-
-

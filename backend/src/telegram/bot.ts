@@ -1,4 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
+import https from 'https';
 import { config } from '../config/env';
 import { findOrCreateUser, getUserByTelegramId, updateUserCalories } from '../services/userService';
 import { createMealFromText, createMealFromImage, determineMealType, getTodayMeals, getMealsByDate, deleteMeal } from '../services/mealService';
@@ -35,6 +36,31 @@ function getMainMenuKeyboard() {
       ]
     ]
   };
+}
+
+// Функция для скачивания файла как base64
+async function downloadImageAsBase64(fileUrl: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    https.get(fileUrl, (response) => {
+      const chunks: Buffer[] = [];
+      
+      response.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+      
+      response.on('end', () => {
+        const buffer = Buffer.concat(chunks);
+        const base64 = buffer.toString('base64');
+        resolve(`data:image/jpeg;base64,${base64}`);
+      });
+      
+      response.on('error', (error) => {
+        reject(error);
+      });
+    }).on('error', (error) => {
+      reject(error);
+    });
+  });
 }
 
 export function initializeBot() {
@@ -104,42 +130,38 @@ export function initializeBot() {
         await handleTodayStats(chatId, dbUser.id);
       } else if (data === 'history') {
         await handleHistory(chatId, dbUser.id);
+      } else if (data?.startsWith('history_day_')) {
+        const dateStr = data.replace('history_day_', '');
+        await handleHistoryDay(chatId, dbUser.id, dateStr);
+      } else if (data?.startsWith('delete_meal_')) {
+        const mealId = parseInt(data.replace('delete_meal_', ''));
+        await deleteMeal(mealId);
+        await bot.sendMessage(chatId, '✅ Прием пищи удален');
+        await handleTodayStats(chatId, dbUser.id);
       } else if (data === 'profile') {
         await handleProfile(chatId, dbUser);
       } else if (data === 'goal') {
         await handleGoal(chatId, dbUser);
       } else if (data === 'stats') {
         await handleStats(chatId, dbUser.id);
-      } else if (data === 'back_menu') {
-        await bot.sendMessage(chatId, '📱 Главное меню:', { reply_markup: getMainMenuKeyboard() });
-      } else if (data?.startsWith('history_')) {
-        const daysAgo = parseInt(data.split('_')[1]);
-        await handleHistoryDay(chatId, dbUser.id, daysAgo);
-      } else if (data?.startsWith('delete_')) {
-        const mealId = parseInt(data.split('_')[1]);
-        await handleDeleteMeal(chatId, dbUser.id, mealId);
-      } else if (data === 'set_goal') {
-        await bot.sendMessage(
-          chatId,
-          '🎯 Напиши свою дневную цель калорий числом.\n\nНапример: 2000'
-        );
       }
 
       await bot.answerCallbackQuery(query.id);
     } catch (error) {
       console.error('✗ Ошибка callback:', error);
-      await bot.answerCallbackQuery(query.id, { text: '❌ Ошибка' });
+      await bot.answerCallbackQuery(query.id, { text: 'Ошибка' });
     }
   });
 
-  // Handle text messages
+  // Handle text messages (for meal input or goal setting)
   bot.on('message', async (msg) => {
-    if (!msg.text || msg.text.startsWith('/')) return;
-
+    if (msg.text?.startsWith('/') || msg.photo) return;
+    
     const chatId = msg.chat.id;
     const user = msg.from;
+    const text = msg.text;
 
-    if (!user) return;
+    if (!user || !text) return;
 
     try {
       const telegramId = user.id.toString();
@@ -150,24 +172,28 @@ export function initializeBot() {
         return;
       }
 
-      // Check if user is setting goal
-      const calories = parseInt(msg.text);
-      if (!isNaN(calories) && calories > 0 && calories < 10000) {
-        await updateUserCalories(dbUser.id, calories);
-        await bot.sendMessage(
-          chatId,
-          `✅ Цель установлена: ${calories} ккал/день`,
-          { reply_markup: getMainMenuKeyboard() }
-        );
-        return;
+      // Check if user is setting calorie goal (number only)
+      if (/^\d+$/.test(text.trim())) {
+        const dailyCalories = parseInt(text.trim());
+        if (dailyCalories >= 1000 && dailyCalories <= 5000) {
+          await updateUserCalories(dbUser.id, dailyCalories);
+          await bot.sendMessage(
+            chatId,
+            `✅ Цель установлена: <b>${dailyCalories}</b> ккал/день`,
+            {
+              parse_mode: 'HTML',
+              reply_markup: getMainMenuKeyboard()
+            }
+          );
+          return;
+        }
       }
 
       await bot.sendMessage(chatId, '🔄 Анализирую еду...');
-
+      
       const now = new Date();
       const mealType = determineMealType(now.getHours());
-
-      const meal = await createMealFromText(dbUser.id, now, mealType, msg.text);
+      const meal = await createMealFromText(dbUser.id, now, text, mealType);
 
       const itemsList = meal.items
         .map((item) => `• ${item.name} (${item.grams}г) - ${item.calories} ккал`)
@@ -175,7 +201,7 @@ export function initializeBot() {
 
       await bot.sendMessage(
         chatId,
-        `✅ Сохранено!\n\n` +
+        `✅ Добавлено!\n\n` +
         `${MEAL_TYPE_EMOJI[meal.type]} <b>${MEAL_TYPE_RU[meal.type]}</b>\n\n` +
         `📋 Продукты:\n${itemsList}\n\n` +
         `━━━━━━━━━━━━━━━\n` +
@@ -190,10 +216,10 @@ export function initializeBot() {
         }
       );
     } catch (error: any) {
-      console.error('✗ Ошибка текст:', error);
+      console.error('✗ Ошибка текста:', error);
       await bot.sendMessage(
         chatId,
-        `❌ Не удалось обработать: ${error.message || 'Попробуй еще раз'}`,
+        `❌ Не удалось распознать еду\n${error.message || 'Попробуй еще раз'}`,
         { reply_markup: getMainMenuKeyboard() }
       );
     }
@@ -224,10 +250,14 @@ export function initializeBot() {
         throw new Error('Не удалось получить файл');
       }
 
+      // Скачиваем фото как base64
       const imageUrl = `https://api.telegram.org/file/bot${config.telegramBotToken}/${file.file_path}`;
+      console.log('📸 Скачиваю фото...');
+      const imageBase64 = await downloadImageAsBase64(imageUrl);
+      console.log('✓ Фото скачано, отправляю в OpenAI...');
+      
       const now = new Date();
-
-      const meal = await createMealFromImage(dbUser.id, now, imageUrl);
+      const meal = await createMealFromImage(dbUser.id, now, imageBase64);
 
       const itemsList = meal.items
         .map((item) => `• ${item.name} (${item.grams}г) - ${item.calories} ккал`)
@@ -298,7 +328,6 @@ async function handleTodayStats(chatId: number, userId: number) {
     chatId,
     `📊 <b>Сегодня</b>\n\n${mealsList}\n\n` +
     `━━━━━━━━━━━━━━━\n` +
-    `📊 <b>Итого за день:</b>\n` +
     `🔥 Калории: <b>${stats.totalCalories}</b> ккал\n` +
     `💪 Белки: ${stats.totalProtein.toFixed(1)}г\n` +
     `🥑 Жиры: ${stats.totalFat.toFixed(1)}г\n` +
@@ -311,43 +340,69 @@ async function handleTodayStats(chatId: number, userId: number) {
 }
 
 async function handleHistory(chatId: number, userId: number) {
+  const last7Days: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    last7Days.push(date);
+  }
+
+  const historyData = await Promise.all(
+    last7Days.map(async (date) => {
+      const stats = await getMealsByDate(userId, date);
+      return {
+        date,
+        ...stats
+      };
+    })
+  );
+
+  const historyList = historyData.map((day) => {
+    const dateStr = day.date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+    const weekday = day.date.toLocaleDateString('ru-RU', { weekday: 'short' });
+    
+    if (day.meals.length === 0) {
+      return `📅 <b>${dateStr}</b> (${weekday})\n   —`;
+    }
+    
+    return `📅 <b>${dateStr}</b> (${weekday})\n   ${day.totalCalories} ккал • ${day.meals.length} приемов`;
+  }).join('\n\n');
+
   await bot.sendMessage(
     chatId,
-    '📝 <b>История приемов пищи</b>\n\nВыбери день:',
-    {
+    `📝 <b>История за неделю</b>\n\n${historyList}\n\n` +
+    `Нажми на дату для подробностей`,
+    { 
       parse_mode: 'HTML',
       reply_markup: {
         inline_keyboard: [
-          [{ text: '📅 Сегодня', callback_data: 'history_0' }],
-          [{ text: '📅 Вчера', callback_data: 'history_1' }],
-          [{ text: '📅 2 дня назад', callback_data: 'history_2' }],
-          [{ text: '📅 3 дня назад', callback_data: 'history_3' }],
-          [{ text: '📅 Неделю назад', callback_data: 'history_7' }],
-          [{ text: '◀️ Назад', callback_data: 'back_menu' }]
+          ...last7Days.slice(0, 3).map(date => [{
+            text: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', weekday: 'short' }),
+            callback_data: `history_day_${date.toISOString().split('T')[0]}`
+          }]),
+          ...last7Days.slice(3, 6).map(date => [{
+            text: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', weekday: 'short' }),
+            callback_data: `history_day_${date.toISOString().split('T')[0]}`
+          }]),
+          [{ text: '🏠 Главное меню', callback_data: 'today' }]
         ]
       }
     }
   );
 }
 
-async function handleHistoryDay(chatId: number, userId: number, daysAgo: number) {
-  const date = new Date();
-  date.setDate(date.getDate() - daysAgo);
-  const dateStr = date.toISOString().split('T')[0];
-  
-  const stats = await getMealsByDate(userId, dateStr);
-  
-  const dayName = daysAgo === 0 ? 'Сегодня' : daysAgo === 1 ? 'Вчера' : `${daysAgo} дня назад`;
+async function handleHistoryDay(chatId: number, userId: number, dateStr: string) {
+  const date = new Date(dateStr);
+  const stats = await getMealsByDate(userId, date);
   
   if (stats.meals.length === 0) {
     await bot.sendMessage(
       chatId,
-      `📅 <b>${dayName}</b>\n\nНет записей за этот день.`,
-      {
+      `📅 <b>${date.toLocaleDateString('ru-RU')}</b>\n\n` +
+      'Нет записей',
+      { 
         parse_mode: 'HTML',
-        reply_markup: {
-          inline_keyboard: [[{ text: '◀️ Назад', callback_data: 'history' }]]
-        }
+        reply_markup: getMainMenuKeyboard() 
       }
     );
     return;
@@ -356,61 +411,35 @@ async function handleHistoryDay(chatId: number, userId: number, daysAgo: number)
   const mealsList = stats.meals.map((meal) => {
     const time = new Date(meal.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const items = meal.items.map(i => `${i.name} (${i.grams}г)`).join(', ');
-    return `${MEAL_TYPE_EMOJI[meal.type]} <b>${MEAL_TYPE_RU[meal.type]}</b> — ${time}\n   ${items}\n   ${meal.totalCalories} ккал`;
+    return `${MEAL_TYPE_EMOJI[meal.type]} <b>${time}</b> — ${MEAL_TYPE_RU[meal.type]}\n   ${items}\n   ${meal.totalCalories} ккал`;
   }).join('\n\n');
-
-  const keyboard = {
-    inline_keyboard: [
-      ...stats.meals.map(meal => [{
-        text: `🗑 Удалить ${MEAL_TYPE_RU[meal.type]}`,
-        callback_data: `delete_${meal.id}`
-      }]),
-      [{ text: '◀️ Назад', callback_data: 'history' }]
-    ]
-  };
 
   await bot.sendMessage(
     chatId,
-    `📅 <b>${dayName}</b>\n\n${mealsList}\n\n` +
+    `📅 <b>${date.toLocaleDateString('ru-RU')}</b>\n\n${mealsList}\n\n` +
     `━━━━━━━━━━━━━━━\n` +
-    `📊 <b>Итого:</b>\n` +
     `🔥 Калории: <b>${stats.totalCalories}</b> ккал\n` +
     `💪 Белки: ${stats.totalProtein.toFixed(1)}г\n` +
     `🥑 Жиры: ${stats.totalFat.toFixed(1)}г\n` +
     `🍞 Углеводы: ${stats.totalCarbs.toFixed(1)}г`,
     { 
       parse_mode: 'HTML',
-      reply_markup: keyboard 
+      reply_markup: getMainMenuKeyboard() 
     }
   );
 }
 
-async function handleDeleteMeal(chatId: number, userId: number, mealId: number) {
-  const deleted = await deleteMeal(mealId, userId);
-  
-  if (deleted) {
-    await bot.sendMessage(
-      chatId,
-      '✅ Прием пищи удален',
-      { reply_markup: getMainMenuKeyboard() }
-    );
-  } else {
-    await bot.sendMessage(
-      chatId,
-      '❌ Не удалось удалить',
-      { reply_markup: getMainMenuKeyboard() }
-    );
-  }
-}
-
 async function handleProfile(chatId: number, user: any) {
+  const info = [];
+  if (user.firstName) info.push(`👤 Имя: ${user.firstName}`);
+  if (user.username) info.push(`📱 Username: @${user.username}`);
+  if (user.dailyCalories) info.push(`🎯 Цель: ${user.dailyCalories} ккал/день`);
+  
+  const statsText = info.length > 0 ? info.join('\n') : 'Профиль пуст';
+
   await bot.sendMessage(
     chatId,
-    `👤 <b>Профиль</b>\n\n` +
-    `Имя: ${user.firstName}${user.lastName ? ' ' + user.lastName : ''}\n` +
-    `ID: ${user.telegramId}\n` +
-    `🎯 Цель: ${user.dailyCalories ? `<b>${user.dailyCalories}</b> ккал` : 'не установлена'}\n\n` +
-    `Используй кнопку "🎯 Цель" для настройки`,
+    `👤 <b>Профиль</b>\n\n${statsText}`,
     { 
       parse_mode: 'HTML',
       reply_markup: getMainMenuKeyboard() 
@@ -421,47 +450,11 @@ async function handleProfile(chatId: number, user: any) {
 async function handleGoal(chatId: number, user: any) {
   await bot.sendMessage(
     chatId,
-    `🎯 <b>Дневная цель калорий</b>\n\n` +
-    `Текущая: ${user.dailyCalories ? `<b>${user.dailyCalories}</b> ккал` : 'не установлена'}\n\n` +
-    `Нажми кнопку ниже и отправь число (например: 2000)`,
-    {
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: [
-          [{ text: '✏️ Установить цель', callback_data: 'set_goal' }],
-          [{ text: '◀️ Назад', callback_data: 'back_menu' }]
-        ]
-      }
-    }
-  );
-}
-
-async function handleStats(chatId: number, userId: number) {
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const date = new Date();
-    date.setDate(date.getDate() - i);
-    const dateStr = date.toISOString().split('T')[0];
-    const stats = await getMealsByDate(userId, dateStr);
-    days.push({ date: dateStr, calories: stats.totalCalories });
-  }
-
-  const maxCal = Math.max(...days.map(d => d.calories), 1);
-  const statsText = days.map((day, i) => {
-    const label = i === 0 ? 'Сегодня   ' : i === 1 ? 'Вчера     ' : day.date;
-    const bars = '█'.repeat(Math.round((day.calories / maxCal) * 10));
-    return `${label}: <b>${day.calories}</b> ккал\n${bars || '▪️'}`;
-  }).join('\n\n');
-
-  const avg = Math.round(days.reduce((sum, d) => sum + d.calories, 0) / days.length);
-  const total = days.reduce((sum, d) => sum + d.calories, 0);
-
-  await bot.sendMessage(
-    chatId,
-    `📈 <b>Статистика за неделю</b>\n\n${statsText}\n\n` +
-    `━━━━━━━━━━━━━━━\n` +
-    `📊 Среднее: <b>${avg}</b> ккал/день\n` +
-    `🔥 Всего: <b>${total}</b> ккал`,
+    `🎯 <b>Дневная цель</b>\n\n` +
+    (user.dailyCalories 
+      ? `Текущая: <b>${user.dailyCalories}</b> ккал/день\n\n` 
+      : 'Не установлена\n\n') +
+    `Отправь число (например: 2000) чтобы установить новую цель`,
     { 
       parse_mode: 'HTML',
       reply_markup: getMainMenuKeyboard() 
@@ -469,9 +462,44 @@ async function handleStats(chatId: number, userId: number) {
   );
 }
 
-export { bot };
+async function handleStats(chatId: number, userId: number) {
+  const last7Days: Date[] = [];
+  for (let i = 0; i < 7; i++) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    last7Days.push(date);
+  }
 
+  const weekData = await Promise.all(
+    last7Days.map(async (date) => {
+      const stats = await getMealsByDate(userId, date);
+      return {
+        date,
+        calories: stats.totalCalories
+      };
+    })
+  );
 
+  const totalWeekCalories = weekData.reduce((sum, day) => sum + day.calories, 0);
+  const avgCalories = Math.round(totalWeekCalories / 7);
 
+  const chart = weekData.reverse().map((day) => {
+    const height = Math.min(Math.floor(day.calories / 200), 10);
+    const bar = '█'.repeat(height || 0);
+    const weekday = day.date.toLocaleDateString('ru-RU', { weekday: 'short' });
+    return `${weekday} ${bar} ${day.calories}`;
+  }).join('\n');
 
-
+  await bot.sendMessage(
+    chatId,
+    `📈 <b>Статистика за неделю</b>\n\n` +
+    `${chart}\n\n` +
+    `━━━━━━━━━━━━━━━\n` +
+    `📊 Всего: ${totalWeekCalories} ккал\n` +
+    `📉 Среднее: ${avgCalories} ккал/день`,
+    { 
+      parse_mode: 'HTML',
+      reply_markup: getMainMenuKeyboard() 
+    }
+  );
+}
