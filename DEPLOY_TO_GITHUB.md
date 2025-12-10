@@ -217,3 +217,4 @@ git status
 **https://github.com/JonyVibeAI/CALAI_tg_bot**
 
 Можешь деплоить на TimeWeb! Инструкция: [DEPLOY_TIMEWEB.md](DEPLOY_TIMEWEB.md)
+
