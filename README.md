@@ -101,7 +101,7 @@ OPENAI_MODEL_VISION=gpt-4o
 ssh user@your-server.com
 
 # 2. Клонируй проект
-git clone https://github.com/your-username/cal-ai-bot.git
+git clone https://github.com/JonyVibeAI/cal-ai-bot.git
 cd cal-ai-bot
 
 # 3. Настрой .env
