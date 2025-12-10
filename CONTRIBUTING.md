@@ -11,7 +11,7 @@
 ### 2. Клонируй свой fork
 
 ```bash
-git clone https://github.com/your-username/cal-ai-bot.git
+git clone https://github.com/JonyVibeAI/cal-ai-bot.git
 cd cal-ai-bot
 ```
 

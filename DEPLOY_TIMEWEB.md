@@ -72,7 +72,7 @@ mkdir -p /var/www/cal-ai-bot
 cd /var/www/cal-ai-bot
 
 # 2. Клонируем репозиторий
-git clone https://github.com/your-username/cal-ai-bot.git .
+git clone https://github.com/JonyVibeAI/cal-ai-bot.git .
 
 # 3. Создаем .env файл
 cp .env.example .env
@@ -114,7 +114,7 @@ GRANT ALL PRIVILEGES ON DATABASE calai TO calai;
 
 # 3. Клонируем проект
 cd /var/www
-git clone https://github.com/your-username/cal-ai-bot.git
+git clone https://github.com/JonyVibeAI/cal-ai-bot.git
 cd cal-ai-bot
 
 # 4. Настраиваем .env

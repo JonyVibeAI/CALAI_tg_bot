@@ -145,7 +145,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 git init
 git add .
 git commit -m "Initial commit"
-git remote add origin https://github.com/YOUR_USERNAME/cal-ai-bot.git
+git remote add origin https://github.com/JonyVibeAI/cal-ai-bot.git
 git push -u origin main
 ```
 

@@ -60,8 +60,8 @@ git add .
 # Создай коммит
 git commit -m "Initial commit: AI calorie tracker bot"
 
-# Добавь remote (замени YOUR_USERNAME)
-git remote add origin https://github.com/YOUR_USERNAME/cal-ai-bot.git
+# Добавь remote
+git remote add origin https://github.com/JonyVibeAI/cal-ai-bot.git
 
 # Загрузи на GitHub
 git branch -M main
@@ -121,11 +121,11 @@ git push origin v1.0.0
 
 В README.md замени:
 ```
-git clone https://github.com/your-username/cal-ai-bot.git
+git clone https://github.com/JonyVibeAI/cal-ai-bot.git
 ```
 на реальный URL:
 ```
-git clone https://github.com/YOUR_REAL_USERNAME/cal-ai-bot.git
+git clone https://github.com/JonyVibeAI/cal-ai-bot.git
 ```
 
 Закоммить и запушить:
