@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cal-ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: calai
+      POSTGRES_PASSWORD: calai_password
+      POSTGRES_DB: calai_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+
+
+
+
+

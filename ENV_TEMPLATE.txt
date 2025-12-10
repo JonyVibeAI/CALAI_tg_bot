@@ -1,0 +1,24 @@
+# ========================================
+# Cal AI Telegram Bot - Переменные окружения
+# ========================================
+
+# База данных PostgreSQL
+DATABASE_URL=postgresql://calai:calai_password@localhost:5432/calai_db
+
+# OpenAI API Key - получи на https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Модели OpenAI (опционально, по умолчанию gpt-4o-mini и gpt-4o)
+OPENAI_MODEL_TEXT=gpt-4o-mini
+OPENAI_MODEL_VISION=gpt-4o
+
+# Telegram Bot Token - получи у @BotFather
+TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHIjklMNOpqrsTUVwxyz
+
+# ========================================
+# Инструкция:
+# ========================================
+# 1. Создай файл .env в корне проекта
+# 2. Скопируй это содержимое в .env
+# 3. Заполни свои значения
+# 4. НЕ коммить .env в Git!

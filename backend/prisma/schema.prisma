@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  telegramId    String    @unique
+  firstName     String?
+  lastName      String?
+  username      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Profile / onboarding data
+  age           Int?
+  heightCm      Int?
+  weightKg      Float?
+  gender        Gender?
+  activityLevel ActivityLevel?
+  goal          GoalType?
+  dailyCalories Int?
+  
+  meals         Meal[]
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum ActivityLevel {
+  SEDENTARY
+  LIGHT
+  MODERATE
+  ACTIVE
+  VERY_ACTIVE
+}
+
+enum GoalType {
+  LOSE_WEIGHT
+  MAINTAIN
+  GAIN_WEIGHT
+}
+
+model Meal {
+  id            Int          @id @default(autoincrement())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int
+  createdAt     DateTime     @default(now())
+  date          DateTime
+  type          MealType
+  totalCalories Int
+  totalProtein  Float
+  totalFat      Float
+  totalCarbs    Float
+  source        MealSource
+  
+  items         MealItem[]
+}
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+  SNACK
+}
+
+enum MealSource {
+  TEXT
+  PHOTO
+  MANUAL
+}
+
+model MealItem {
+  id       Int    @id @default(autoincrement())
+  meal     Meal   @relation(fields: [mealId], references: [id], onDelete: Cascade)
+  mealId   Int
+  name     String
+  grams    Float
+  calories Int
+  protein  Float
+  fat      Float
+  carbs    Float
+}
+
+model Product {
+  id             Int    @id @default(autoincrement())
+  name           String @unique
+  caloriesPer100g Int
+  proteinPer100g Float
+  fatPer100g     Float
+  carbsPer100g   Float
+}
+
+
+
+
+
