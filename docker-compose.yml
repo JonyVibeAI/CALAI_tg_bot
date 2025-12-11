@@ -30,6 +30,7 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       DATABASE_URL: postgresql://${POSTGRES_USER:-calai}:${POSTGRES_PASSWORD:-calai_password}@postgres:5432/${POSTGRES_DB:-calai_db}?schema=public
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       OPENAI_MODEL_TEXT: ${OPENAI_MODEL_TEXT:-gpt-4o-mini}
       OPENAI_MODEL_VISION: ${OPENAI_MODEL_VISION:-gpt-4o}
