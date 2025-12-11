@@ -2,55 +2,47 @@ import OpenAI from 'openai';
 import { config } from '../config/env';
 import { ParsedFoodItem } from '../types';
 
+// Логируем настройки при старте
+console.log('═══════════════════════════════════════');
+console.log('🤖 Инициализация OpenAI клиента...');
+console.log('📍 Base URL:', config.openaiBaseUrl || 'https://api.openai.com/v1 (по умолчанию)');
+console.log('🔑 API Key:', config.openaiApiKey ? `${config.openaiApiKey.substring(0, 10)}...` : 'НЕ ЗАДАН!');
+console.log('📝 Text Model:', config.openaiModelText);
+console.log('📷 Vision Model:', config.openaiModelVision);
+console.log('═══════════════════════════════════════');
+
 // Создаём клиент с опциональным прокси
 const openai = new OpenAI({
   apiKey: config.openaiApiKey,
-  baseURL: config.openaiBaseUrl, // Для прокси (например, openrouter.ai)
+  baseURL: config.openaiBaseUrl,
 });
 
-console.log('🤖 OpenAI клиент инициализирован');
-if (config.openaiBaseUrl) {
-  console.log('🌐 Используется прокси:', config.openaiBaseUrl);
-}
-
 export async function parseMealFromText(description: string): Promise<ParsedFoodItem[]> {
+  console.log('📝 parseMealFromText вызван с:', description.substring(0, 50));
+  
   try {
-    const systemPrompt = `You are a nutrition assistant. Convert meal descriptions into structured JSON.
-For each food item, estimate:
-- name: the food name
-- grams: estimated portion size in grams
-- calories: total calories for that portion
-- protein: protein in grams
-- fat: fat in grams  
-- carbs: carbs in grams
-
-Return ONLY a JSON object with "items" array, no other text. Example format:
-{
-  "items": [
-    {
-      "name": "Chicken breast",
-      "grams": 150,
-      "calories": 248,
-      "protein": 46.5,
-      "fat": 5.4,
-      "carbs": 0
-    }
-  ]
-}`;
-
     const response = await openai.chat.completions.create({
       model: config.openaiModelText,
       messages: [
-        { role: 'system', content: systemPrompt },
+        { 
+          role: 'system', 
+          content: `You are a nutrition assistant. Return ONLY valid JSON with "items" array.
+Each item must have: name, grams, calories, protein, fat, carbs.
+Example: {"items":[{"name":"Egg","grams":50,"calories":78,"protein":6,"fat":5,"carbs":0.6}]}`
+        },
         { role: 'user', content: `Parse this meal: ${description}` }
       ],
       temperature: 0.3,
     });
 
+    console.log('✓ Ответ получен от OpenAI Text');
+
     const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error('Нет ответа от OpenAI');
     }
+
+    console.log('📝 Raw ответ:', content.substring(0, 200));
 
     // Извлекаем JSON
     let jsonStr = content.trim();
@@ -61,6 +53,8 @@ Return ONLY a JSON object with "items" array, no other text. Example format:
     const parsed = JSON.parse(jsonStr);
     const items = Array.isArray(parsed) ? parsed : (parsed.items || []);
     
+    console.log('✓ Распознано продуктов:', items.length);
+    
     return items.map((item: any) => ({
       name: item.name || 'Неизвестно',
       grams: Number(item.grams) || 100,
@@ -69,16 +63,27 @@ Return ONLY a JSON object with "items" array, no other text. Example format:
       fat: Number(item.fat) || 0,
       carbs: Number(item.carbs) || 0,
     }));
-  } catch (error) {
-    console.error('✗ Ошибка парсинга текста:', error);
+  } catch (error: any) {
+    console.error('═══════════════════════════════════════');
+    console.error('✗ ОШИБКА parseMealFromText');
+    console.error('✗ Тип:', error.constructor.name);
+    console.error('✗ Сообщение:', error.message);
+    if (error.status) console.error('✗ HTTP статус:', error.status);
+    if (error.code) console.error('✗ Код ошибки:', error.code);
+    if (error.error) console.error('✗ Детали:', JSON.stringify(error.error));
+    console.error('═══════════════════════════════════════');
     throw new Error('Не удалось распознать еду');
   }
 }
 
 export async function parseMealFromImage(imageDataUri: string): Promise<{items: ParsedFoodItem[], mealType: string}> {
+  console.log('📷 parseMealFromImage вызван');
+  console.log('📷 Размер base64:', imageDataUri.length, 'символов');
+  console.log('📷 Начало данных:', imageDataUri.substring(0, 50));
+  
   try {
-    console.log('🤖 Отправляю запрос в OpenAI Vision...');
-    console.log('📷 Размер base64:', imageDataUri.length, 'символов');
+    console.log('🚀 Отправляю запрос в OpenAI Vision...');
+    console.log('🚀 Модель:', config.openaiModelVision);
     
     const response = await openai.chat.completions.create({
       model: config.openaiModelVision,
@@ -88,25 +93,9 @@ export async function parseMealFromImage(imageDataUri: string): Promise<{items: 
           content: [
             {
               type: 'text',
-              text: `Analyze this food image. Identify all food items and estimate nutrition.
-
-For each item provide:
-- name (in Russian)
-- grams (portion size)
-- calories
-- protein
-- fat
-- carbs
-
-Also determine meal type: BREAKFAST, LUNCH, DINNER, or SNACK
-
-Respond ONLY with valid JSON in this exact format:
-{
-  "mealType": "SNACK",
-  "items": [
-    {"name": "Яблоко", "grams": 180, "calories": 95, "protein": 0.5, "fat": 0.3, "carbs": 25}
-  ]
-}`
+              text: `Analyze this food image. Return ONLY valid JSON.
+Format: {"mealType":"SNACK","items":[{"name":"Apple","grams":180,"calories":95,"protein":0.5,"fat":0.3,"carbs":25}]}
+mealType must be: BREAKFAST, LUNCH, DINNER, or SNACK`
             },
             {
               type: 'image_url',
@@ -118,17 +107,17 @@ Respond ONLY with valid JSON in this exact format:
           ]
         }
       ],
-      max_tokens: 1000,
+      max_tokens: 500,
     });
 
-    console.log('✓ Получен ответ от OpenAI');
+    console.log('✓ Получен ответ от OpenAI Vision');
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
       throw new Error('Нет ответа от OpenAI Vision');
     }
 
-    console.log('📝 Ответ OpenAI:', content);
+    console.log('📝 Raw ответ:', content);
 
     // Извлекаем JSON из ответа
     let jsonStr = content.trim();
@@ -147,16 +136,21 @@ Respond ONLY with valid JSON in this exact format:
     }));
     
     console.log('✓ Распознано продуктов:', items.length);
+    console.log('✓ Тип приема:', parsed.mealType);
     
     return {
       items,
       mealType: parsed.mealType || 'SNACK'
     };
-  } catch (error) {
-    console.error('✗ Ошибка анализа фото:', error);
-    if (error instanceof Error) {
-      console.error('✗ Сообщение:', error.message);
-    }
+  } catch (error: any) {
+    console.error('═══════════════════════════════════════');
+    console.error('✗ ОШИБКА parseMealFromImage');
+    console.error('✗ Тип:', error.constructor.name);
+    console.error('✗ Сообщение:', error.message);
+    if (error.status) console.error('✗ HTTP статус:', error.status);
+    if (error.code) console.error('✗ Код ошибки:', error.code);
+    if (error.error) console.error('✗ Детали:', JSON.stringify(error.error));
+    console.error('═══════════════════════════════════════');
     throw new Error('Не удалось распознать еду на фото');
   }
 }
