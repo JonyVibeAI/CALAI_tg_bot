@@ -3,9 +3,20 @@ import https from 'https';
 import { config } from '../config/env';
 import { findOrCreateUser, getUserByTelegramId, updateUserCalories } from '../services/userService';
 import { createMealFromText, createMealFromImage, determineMealType, getTodayMeals, getMealsByDate, deleteMeal } from '../services/mealService';
-import { checkUserAccess, useAnalysis, getUserSubscriptionInfo, getSubscriptionPrice, activateSubscription, setSetting, getSetting } from '../services/subscriptionService';
+import { checkUserAccess, useAnalysis, getUserSubscriptionInfo, getSubscriptionPrice, activateSubscription, setSetting, getSetting, getFreeAnalysesCount, getRequiredChannels, isChannelCheckEnabled } from '../services/subscriptionService';
 import { activatePromo, createPromo, getAllPromos, deactivatePromo } from '../services/promoService';
-import { getBotStats, isAdmin, setAdmin, getTopUsers, getRecentPayments } from '../services/adminService';
+import { getBotStats, isAdmin, setAdmin, getTopUsers, getRecentPayments, getAllUserTelegramIds } from '../services/adminService';
+
+// Состояние для рассылки
+interface BroadcastState {
+  text?: string;
+  photoFileId?: string;
+  waitingFor: 'text' | 'photo' | 'confirm' | null;
+}
+const broadcastStates = new Map<number, BroadcastState>();
+
+// Состояние для добавления канала
+const addChannelStates = new Set<number>();
 
 const bot = new TelegramBot(config.telegramBotToken, { polling: true });
 
@@ -205,8 +216,10 @@ export function initializeBot() {
         reply_markup: {
           inline_keyboard: [
             [{ text: '📊 Статистика', callback_data: 'admin_stats' }],
+            [{ text: '📢 Рассылка', callback_data: 'admin_broadcast' }],
             [{ text: '🎁 Промокоды', callback_data: 'admin_promos' }],
             [{ text: '⚙️ Настройки', callback_data: 'admin_settings' }],
+            [{ text: '📺 Обяз. каналы', callback_data: 'admin_channels' }],
             [{ text: '👥 Топ юзеров', callback_data: 'admin_top_users' }],
             [{ text: '💰 Последние платежи', callback_data: 'admin_payments' }]
           ]
@@ -271,6 +284,28 @@ export function initializeBot() {
 
     await setSetting('SUBSCRIPTION_PRICE_STARS', price.toString());
     await bot.sendMessage(chatId, `✅ Цена подписки установлена: ${price} ⭐`);
+  });
+
+  // Установить количество бесплатных анализов
+  bot.onText(/\/setfree\s+(\d+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const user = msg.from;
+    if (!user) return;
+
+    const isUserAdmin = await isAdmin(user.id.toString());
+    if (!isUserAdmin && user.id.toString() !== config.adminTelegramId) {
+      await bot.sendMessage(chatId, '⛔ Нет доступа');
+      return;
+    }
+
+    const count = parseInt(match?.[1] || '0');
+    if (count < 0) {
+      await bot.sendMessage(chatId, '❌ Количество должно быть >= 0');
+      return;
+    }
+
+    await setSetting('FREE_ANALYSES_COUNT', count.toString());
+    await bot.sendMessage(chatId, `✅ Бесплатных анализов для новых юзеров: ${count}`);
   });
 
   // ==================== CALLBACK QUERIES ====================
@@ -338,6 +373,45 @@ export function initializeBot() {
         await deactivatePromo(code);
         await bot.sendMessage(chatId, `✅ Промокод ${code} деактивирован`);
       }
+      // Рассылка
+      else if (data === 'admin_broadcast') {
+        await handleAdminBroadcast(chatId, user.id.toString());
+      } else if (data === 'broadcast_add_photo') {
+        const state = broadcastStates.get(user.id) || { waitingFor: null };
+        state.waitingFor = 'photo';
+        broadcastStates.set(user.id, state);
+        await bot.sendMessage(chatId, '📷 Отправь фото для рассылки:');
+      } else if (data === 'broadcast_skip_photo') {
+        const state = broadcastStates.get(user.id);
+        if (state?.text) {
+          state.waitingFor = 'confirm';
+          broadcastStates.set(user.id, state);
+          await showBroadcastPreview(chatId, user.id);
+        }
+      } else if (data === 'broadcast_send') {
+        await executeBroadcast(chatId, user.id);
+      } else if (data === 'broadcast_cancel') {
+        broadcastStates.delete(user.id);
+        await bot.sendMessage(chatId, '❌ Рассылка отменена', { reply_markup: getMainMenuKeyboard() });
+      }
+      // Каналы
+      else if (data === 'admin_channels') {
+        await handleAdminChannels(chatId, user.id.toString());
+      } else if (data === 'channels_toggle') {
+        const enabled = await isChannelCheckEnabled();
+        await setSetting('CHANNEL_CHECK_ENABLED', enabled ? 'false' : 'true');
+        await handleAdminChannels(chatId, user.id.toString());
+      } else if (data === 'channels_add') {
+        addChannelStates.add(user.id);
+        await bot.sendMessage(chatId, '📺 Отправь @username или ID канала/бота:\n\nПример: @mychannel или -1001234567890');
+      } else if (data?.startsWith('channels_remove_')) {
+        const channel = data.replace('channels_remove_', '');
+        const channels = await getRequiredChannels();
+        const newChannels = channels.filter(c => c !== channel);
+        await setSetting('REQUIRED_CHANNELS', newChannels.join(','));
+        await bot.sendMessage(chatId, `✅ Канал ${channel} удалён`);
+        await handleAdminChannels(chatId, user.id.toString());
+      }
 
       await bot.answerCallbackQuery(query.id);
     } catch (error) {
@@ -400,6 +474,40 @@ export function initializeBot() {
 
     if (!user || !text) return;
 
+    // Обработка состояния рассылки
+    const broadcastState = broadcastStates.get(user.id);
+    if (broadcastState?.waitingFor === 'text') {
+      broadcastState.text = text;
+      broadcastState.waitingFor = null;
+      broadcastStates.set(user.id, broadcastState);
+      await bot.sendMessage(chatId, '✅ Текст сохранён!\n\nХочешь добавить фото?', {
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '📷 Добавить фото', callback_data: 'broadcast_add_photo' }],
+            [{ text: '⏭ Пропустить', callback_data: 'broadcast_skip_photo' }],
+            [{ text: '❌ Отмена', callback_data: 'broadcast_cancel' }]
+          ]
+        }
+      });
+      return;
+    }
+
+    // Обработка добавления канала
+    if (addChannelStates.has(user.id)) {
+      addChannelStates.delete(user.id);
+      const channel = text.trim();
+      const channels = await getRequiredChannels();
+      if (!channels.includes(channel)) {
+        channels.push(channel);
+        await setSetting('REQUIRED_CHANNELS', channels.join(','));
+        await bot.sendMessage(chatId, `✅ Канал ${channel} добавлен`);
+      } else {
+        await bot.sendMessage(chatId, `⚠️ Канал уже в списке`);
+      }
+      await handleAdminChannels(chatId, user.id.toString());
+      return;
+    }
+
     try {
       const telegramId = user.id.toString();
       const dbUser = await getUserByTelegramId(telegramId);
@@ -422,6 +530,9 @@ export function initializeBot() {
           return;
         }
       }
+
+      // Проверяем подписку на обязательные каналы
+      if (!await checkChannelSubscription(chatId, user.id)) return;
 
       // Проверяем доступ
       if (!await checkAndNotifyAccess(chatId, dbUser.id)) return;
@@ -470,6 +581,17 @@ export function initializeBot() {
 
     if (!user || !msg.photo) return;
 
+    // Обработка фото для рассылки
+    const broadcastState = broadcastStates.get(user.id);
+    if (broadcastState?.waitingFor === 'photo') {
+      const photo = msg.photo[msg.photo.length - 1];
+      broadcastState.photoFileId = photo.file_id;
+      broadcastState.waitingFor = 'confirm';
+      broadcastStates.set(user.id, broadcastState);
+      await showBroadcastPreview(chatId, user.id);
+      return;
+    }
+
     try {
       const telegramId = user.id.toString();
       const dbUser = await getUserByTelegramId(telegramId);
@@ -478,6 +600,9 @@ export function initializeBot() {
         await bot.sendMessage(chatId, 'Сначала нажми /start');
         return;
       }
+
+      // Проверяем подписку на обязательные каналы
+      if (!await checkChannelSubscription(chatId, user.id)) return;
 
       // Проверяем доступ
       if (!await checkAndNotifyAccess(chatId, dbUser.id)) return;
@@ -829,12 +954,16 @@ async function handleAdminSettings(chatId: number, telegramId: string) {
   if (!isUserAdmin && telegramId !== config.adminTelegramId) return;
 
   const price = await getSubscriptionPrice();
+  const freeAnalyses = await getFreeAnalysesCount();
 
   await bot.sendMessage(
     chatId,
     `⚙️ <b>Настройки</b>\n\n` +
-    `⭐ Цена подписки: <b>${price} звёзд</b>\n\n` +
-    `Изменить цену: /setprice ЧИСЛО`,
+    `⭐ Цена подписки: <b>${price} звёзд</b>\n` +
+    `🆓 Бесплатных анализов: <b>${freeAnalyses}</b>\n\n` +
+    `<b>Команды:</b>\n` +
+    `/setprice ЧИСЛО — изменить цену\n` +
+    `/setfree ЧИСЛО — изменить кол-во бесплатных анализов`,
     { parse_mode: 'HTML' }
   );
 }
@@ -880,4 +1009,179 @@ async function handleAdminPayments(chatId: number, telegramId: string) {
     `💰 <b>Последние платежи</b>\n\n${list}`,
     { parse_mode: 'HTML' }
   );
+}
+
+// ==================== РАССЫЛКА ====================
+
+async function handleAdminBroadcast(chatId: number, telegramId: string) {
+  const isUserAdmin = await isAdmin(telegramId);
+  if (!isUserAdmin && telegramId !== config.adminTelegramId) return;
+
+  const userIds = await getAllUserTelegramIds();
+  broadcastStates.set(parseInt(telegramId), { waitingFor: 'text' });
+
+  await bot.sendMessage(
+    chatId,
+    `📢 <b>Рассылка</b>\n\n` +
+    `👥 Получателей: <b>${userIds.length}</b>\n\n` +
+    `✏️ Отправь текст для рассылки:`,
+    { parse_mode: 'HTML' }
+  );
+}
+
+async function showBroadcastPreview(chatId: number, telegramId: number) {
+  const state = broadcastStates.get(telegramId);
+  if (!state?.text) return;
+
+  const userIds = await getAllUserTelegramIds();
+
+  if (state.photoFileId) {
+    await bot.sendPhoto(chatId, state.photoFileId, {
+      caption: `📋 <b>Превью рассылки:</b>\n\n${state.text}\n\n👥 Получателей: ${userIds.length}`,
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: '✅ Отправить', callback_data: 'broadcast_send' }],
+          [{ text: '❌ Отмена', callback_data: 'broadcast_cancel' }]
+        ]
+      }
+    });
+  } else {
+    await bot.sendMessage(
+      chatId,
+      `📋 <b>Превью рассылки:</b>\n\n${state.text}\n\n👥 Получателей: ${userIds.length}`,
+      {
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '✅ Отправить', callback_data: 'broadcast_send' }],
+            [{ text: '❌ Отмена', callback_data: 'broadcast_cancel' }]
+          ]
+        }
+      }
+    );
+  }
+}
+
+async function executeBroadcast(chatId: number, telegramId: number) {
+  const state = broadcastStates.get(telegramId);
+  if (!state?.text) {
+    await bot.sendMessage(chatId, '❌ Нет текста для рассылки');
+    return;
+  }
+
+  const userIds = await getAllUserTelegramIds();
+  let success = 0;
+  let failed = 0;
+
+  await bot.sendMessage(chatId, `⏳ Начинаю рассылку ${userIds.length} пользователям...`);
+
+  for (const recipientId of userIds) {
+    try {
+      if (state.photoFileId) {
+        await bot.sendPhoto(recipientId, state.photoFileId, {
+          caption: state.text,
+          parse_mode: 'HTML'
+        });
+      } else {
+        await bot.sendMessage(recipientId, state.text, { parse_mode: 'HTML' });
+      }
+      success++;
+    } catch (error) {
+      failed++;
+    }
+    // Задержка чтобы не превысить лимиты Telegram
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+
+  broadcastStates.delete(telegramId);
+
+  await bot.sendMessage(
+    chatId,
+    `✅ <b>Рассылка завершена!</b>\n\n` +
+    `📤 Отправлено: <b>${success}</b>\n` +
+    `❌ Ошибок: <b>${failed}</b>\n` +
+    `👥 Всего: ${userIds.length}`,
+    { parse_mode: 'HTML', reply_markup: getMainMenuKeyboard() }
+  );
+}
+
+// ==================== ОБЯЗАТЕЛЬНЫЕ КАНАЛЫ ====================
+
+async function handleAdminChannels(chatId: number, telegramId: string) {
+  const isUserAdmin = await isAdmin(telegramId);
+  if (!isUserAdmin && telegramId !== config.adminTelegramId) return;
+
+  const enabled = await isChannelCheckEnabled();
+  const channels = await getRequiredChannels();
+
+  let channelsList = 'Нет каналов';
+  const removeButtons: any[] = [];
+
+  if (channels.length > 0) {
+    channelsList = channels.map((c, i) => `${i + 1}. ${c}`).join('\n');
+    channels.forEach(c => {
+      removeButtons.push([{ text: `🗑 Удалить ${c}`, callback_data: `channels_remove_${c}` }]);
+    });
+  }
+
+  await bot.sendMessage(
+    chatId,
+    `📺 <b>Обязательные подписки</b>\n\n` +
+    `${enabled ? '✅ Проверка ВКЛЮЧЕНА' : '❌ Проверка ВЫКЛЮЧЕНА'}\n\n` +
+    `<b>Каналы:</b>\n${channelsList}`,
+    {
+      parse_mode: 'HTML',
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: enabled ? '🔴 Выключить проверку' : '🟢 Включить проверку', callback_data: 'channels_toggle' }],
+          [{ text: '➕ Добавить канал', callback_data: 'channels_add' }],
+          ...removeButtons,
+          [{ text: '🔙 Назад', callback_data: 'menu' }]
+        ]
+      }
+    }
+  );
+}
+
+async function checkChannelSubscription(chatId: number, telegramId: number): Promise<boolean> {
+  const enabled = await isChannelCheckEnabled();
+  if (!enabled) return true;
+
+  const channels = await getRequiredChannels();
+  if (channels.length === 0) return true;
+
+  const notSubscribed: string[] = [];
+
+  for (const channel of channels) {
+    try {
+      const member = await bot.getChatMember(channel, telegramId);
+      if (!['member', 'administrator', 'creator'].includes(member.status)) {
+        notSubscribed.push(channel);
+      }
+    } catch (error) {
+      // Если не удалось проверить — считаем что не подписан
+      notSubscribed.push(channel);
+    }
+  }
+
+  if (notSubscribed.length > 0) {
+    const channelLinks = notSubscribed.map(c => {
+      if (c.startsWith('@')) {
+        return `• <a href="https://t.me/${c.slice(1)}">${c}</a>`;
+      }
+      return `• ${c}`;
+    }).join('\n');
+
+    await bot.sendMessage(
+      chatId,
+      `⚠️ <b>Подпишись на каналы</b>\n\n` +
+      `Чтобы использовать бота, подпишись:\n${channelLinks}\n\n` +
+      `После подписки попробуй снова!`,
+      { parse_mode: 'HTML', disable_web_page_preview: true }
+    );
+    return false;
+  }
+
+  return true;
 }

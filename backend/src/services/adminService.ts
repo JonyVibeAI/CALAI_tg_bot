@@ -145,3 +145,11 @@ export async function getRecentPayments(limit: number = 10): Promise<Array<{
     },
   });
 }
+
+// Получить все telegram ID пользователей для рассылки
+export async function getAllUserTelegramIds(): Promise<string[]> {
+  const users = await prisma.user.findMany({
+    select: { telegramId: true },
+  });
+  return users.map(u => u.telegramId);
+}

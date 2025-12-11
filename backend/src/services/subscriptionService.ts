@@ -2,9 +2,11 @@ import { prisma } from '../db/prisma';
 
 // Настройки по умолчанию
 const DEFAULT_SETTINGS = {
-  SUBSCRIPTION_PRICE_STARS: '100',      // Цена подписки в звёздах
+  SUBSCRIPTION_PRICE_STARS: '100',       // Цена подписки в звёздах
   SUBSCRIPTION_MONTHS: '1',              // Месяцев за 1 оплату
   FREE_ANALYSES_COUNT: '3',              // Бесплатных анализов для новых юзеров
+  REQUIRED_CHANNELS: '',                 // Каналы для обязательной подписки (через запятую)
+  CHANNEL_CHECK_ENABLED: 'false',        // Включена ли проверка подписки на каналы
 };
 
 // Получить настройку из БД или дефолт
@@ -26,6 +28,25 @@ export async function setSetting(key: string, value: string): Promise<void> {
 export async function getSubscriptionPrice(): Promise<number> {
   const price = await getSetting('SUBSCRIPTION_PRICE_STARS');
   return parseInt(price) || 100;
+}
+
+// Получить количество бесплатных анализов для новых юзеров
+export async function getFreeAnalysesCount(): Promise<number> {
+  const count = await getSetting('FREE_ANALYSES_COUNT');
+  return parseInt(count) || 3;
+}
+
+// Получить список обязательных каналов
+export async function getRequiredChannels(): Promise<string[]> {
+  const channels = await getSetting('REQUIRED_CHANNELS');
+  if (!channels) return [];
+  return channels.split(',').map(c => c.trim()).filter(c => c.length > 0);
+}
+
+// Проверить, включена ли проверка каналов
+export async function isChannelCheckEnabled(): Promise<boolean> {
+  const enabled = await getSetting('CHANNEL_CHECK_ENABLED');
+  return enabled === 'true';
 }
 
 // Проверить, есть ли у пользователя доступ к анализу
