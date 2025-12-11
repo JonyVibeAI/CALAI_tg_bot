@@ -111,9 +111,22 @@ mealType must be: BREAKFAST, LUNCH, DINNER, or SNACK`
     });
 
     console.log('✓ Получен ответ от OpenAI Vision');
-
-    const content = response.choices[0]?.message?.content;
+    console.log('📦 Full response:', JSON.stringify(response, null, 2));
+    
+    const choice = response.choices[0];
+    console.log('📦 Choice:', JSON.stringify(choice, null, 2));
+    
+    // Проверяем разные варианты где может быть контент
+    const content = choice?.message?.content;
+    const refusal = (choice?.message as any)?.refusal;
+    
+    if (refusal) {
+      console.error('⚠️ Модель отказалась:', refusal);
+      throw new Error(`Модель отказалась анализировать: ${refusal}`);
+    }
+    
     if (!content) {
+      console.error('⚠️ Content пустой, finish_reason:', choice?.finish_reason);
       throw new Error('Нет ответа от OpenAI Vision');
     }
 
