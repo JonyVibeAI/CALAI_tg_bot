@@ -34,6 +34,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       OPENAI_MODEL_TEXT: ${OPENAI_MODEL_TEXT:-gpt-4o-mini}
       OPENAI_MODEL_VISION: ${OPENAI_MODEL_VISION:-gpt-4o}
+      ADMIN_TELEGRAM_ID: ${ADMIN_TELEGRAM_ID:-}
     networks:
       - cal-ai-network
     healthcheck:

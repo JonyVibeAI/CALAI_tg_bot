@@ -16,6 +16,17 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   
+  // Роль
+  isAdmin       Boolean   @default(false)
+  
+  // Подписка
+  subscriptionEnd DateTime?  // Дата окончания подписки (null = нет подписки)
+  
+  // Анализы
+  freeAnalysesLeft Int      @default(3)   // Бесплатные анализы (по умолчанию 3)
+  bonusAnalyses    Int      @default(0)   // Бонусные от промокодов
+  totalAnalysesUsed Int     @default(0)   // Всего использовано
+  
   // Profile / onboarding data
   age           Int?
   heightCm      Int?
@@ -25,7 +36,9 @@ model User {
   goal          GoalType?
   dailyCalories Int?
   
-  meals         Meal[]
+  meals             Meal[]
+  payments          Payment[]
+  promoActivations  PromoActivation[]
 }
 
 enum Gender {
@@ -98,8 +111,53 @@ model Product {
   carbsPer100g   Float
 }
 
+// Платежи через Telegram Stars
+model Payment {
+  id                  Int      @id @default(autoincrement())
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId              Int
+  
+  telegramPaymentId   String   @unique  // ID платежа от Telegram
+  stars               Int                // Количество звёзд
+  months              Int      @default(1)  // Месяцев подписки
+  
+  createdAt           DateTime @default(now())
+}
 
+// Промокоды
+model Promo {
+  id            Int       @id @default(autoincrement())
+  code          String    @unique  // Уникальный код (например: FREE100)
+  
+  analysesCount Int       // Сколько анализов даёт
+  
+  maxUses       Int?      // Макс. использований (null = безлимит)
+  usedCount     Int       @default(0)
+  
+  expiresAt     DateTime? // Срок действия (null = бессрочный)
+  isActive      Boolean   @default(true)
+  
+  createdAt     DateTime  @default(now())
+  
+  activations   PromoActivation[]
+}
 
+// Активации промокодов (чтобы 1 юзер не мог активировать дважды)
+model PromoActivation {
+  id        Int      @id @default(autoincrement())
+  promo     Promo    @relation(fields: [promoId], references: [id], onDelete: Cascade)
+  promoId   Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([promoId, userId])  // 1 юзер = 1 активация на промокод
+}
 
-
-
+// Настройки бота (ключ-значение)
+model Settings {
+  id    Int    @id @default(autoincrement())
+  key   String @unique
+  value String
+}

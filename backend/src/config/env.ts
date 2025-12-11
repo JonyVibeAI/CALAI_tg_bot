@@ -18,4 +18,6 @@ export const config = {
   openaiModelVision: process.env.OPENAI_MODEL_VISION || 'gpt-4o',
   // Прокси для OpenAI (нужен для работы из России)
   openaiBaseUrl: process.env.OPENAI_BASE_URL || undefined,
+  // ID администратора (Telegram user ID)
+  adminTelegramId: process.env.ADMIN_TELEGRAM_ID || '',
 };
