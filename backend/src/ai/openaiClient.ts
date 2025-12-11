@@ -100,8 +100,7 @@ mealType must be: BREAKFAST, LUNCH, DINNER, or SNACK`
             {
               type: 'image_url',
               image_url: {
-                url: imageDataUri,
-                detail: 'low'
+                url: imageDataUri
               }
             }
           ]
