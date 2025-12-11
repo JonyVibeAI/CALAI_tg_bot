@@ -1,42 +1,21 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: cal-ai-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-calai}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-calai_password}
-      POSTGRES_DB: ${POSTGRES_DB:-calai_db}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-calai}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - cal-ai-network
-
   bot:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: cal-ai-bot
     restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-calai}:${POSTGRES_PASSWORD:-calai_password}@postgres:5432/${POSTGRES_DB:-calai_db}?schema=public
+      DATABASE_URL: ${DATABASE_URL}
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
       OPENAI_MODEL_TEXT: ${OPENAI_MODEL_TEXT:-gpt-4o-mini}
       OPENAI_MODEL_VISION: ${OPENAI_MODEL_VISION:-gpt-4o}
       ADMIN_TELEGRAM_ID: ${ADMIN_TELEGRAM_ID:-}
-    networks:
-      - cal-ai-network
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
       interval: 30s
@@ -48,7 +27,3 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-
-networks:
-  cal-ai-network:
-    driver: bridge
