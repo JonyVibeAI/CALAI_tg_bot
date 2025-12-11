@@ -135,12 +135,11 @@ export function initializeBot() {
       await bot.sendMessage(
         chatId,
         `👋 Привет, ${user.first_name}!\n\n` +
-        `🔥 <b>AI-трекер калорий</b>\n\n` +
+        `🔥 <b>ИИ-трекер калорий</b>\n\n` +
         `Просто отправь:\n` +
-        `📸 Фото еды — AI распознает и посчитает\n` +
-        `📝 Текст — например: "2 яйца, овсянка 100г"\n\n` +
+        `📸 Фото еды\n\n` +
         `${accessInfo}\n\n` +
-        `👇 Используй меню`,
+        `👇 меню`,
         {
           parse_mode: 'HTML',
           reply_markup: getMainMenuKeyboard()
@@ -651,7 +650,6 @@ async function handleProfile(chatId: number, user: any) {
   
   const info = [];
   if (user.firstName) info.push(`👤 Имя: ${user.firstName}`);
-  if (user.username) info.push(`📱 Username: @${user.username}`);
   if (user.dailyCalories) info.push(`🎯 Цель: ${user.dailyCalories} ккал/день`);
   
   info.push('');
@@ -760,7 +758,7 @@ async function handleBuySubscription(chatId: number, userId: number) {
     await bot.sendInvoice(
       chatId,
       'Premium подписка',                           // title
-      '🔥 Безлимитный доступ к AI-анализу еды на 1 месяц', // description
+      '🔥 Безлимитный доступ к ИИ-анализу еды на 1 месяц', // description
       'subscription_1_month',                        // payload
       '',                                            // provider_token (пустой для Stars)
       'XTR',                                         // currency (XTR = Telegram Stars)
