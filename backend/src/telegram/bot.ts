@@ -412,6 +412,17 @@ export function initializeBot() {
         await bot.sendMessage(chatId, `✅ Канал ${channel} удалён`);
         await handleAdminChannels(chatId, user.id.toString());
       }
+      // Проверка подписки на каналы
+      else if (data === 'check_subscription') {
+        const subscribed = await checkChannelSubscription(chatId, user.id);
+        if (subscribed) {
+          await bot.sendMessage(
+            chatId, 
+            '✅ Отлично! Теперь можешь пользоваться ботом.\n\n📸 Отправь фото еды!',
+            { reply_markup: getMainMenuKeyboard() }
+          );
+        }
+      }
 
       await bot.answerCallbackQuery(query.id);
     } catch (error) {
@@ -1166,19 +1177,38 @@ async function checkChannelSubscription(chatId: number, telegramId: number): Pro
   }
 
   if (notSubscribed.length > 0) {
-    const channelLinks = notSubscribed.map(c => {
+    // Создаём кнопки со ссылками на каналы
+    const channelButtons = notSubscribed.map(c => {
+      let url = '';
+      let name = c;
+      
       if (c.startsWith('@')) {
-        return `• <a href="https://t.me/${c.slice(1)}">${c}</a>`;
+        url = `https://t.me/${c.slice(1)}`;
+        name = c;
+      } else if (c.startsWith('-100')) {
+        // Для ID каналов нужно убрать -100 префикс
+        url = `https://t.me/c/${c.slice(4)}`;
+        name = `Канал ${c}`;
+      } else {
+        url = `https://t.me/${c}`;
+        name = c;
       }
-      return `• ${c}`;
-    }).join('\n');
+      
+      return [{ text: `📢 ${name}`, url }];
+    });
 
     await bot.sendMessage(
       chatId,
-      `⚠️ <b>Подпишись на каналы</b>\n\n` +
-      `Чтобы использовать бота, подпишись:\n${channelLinks}\n\n` +
-      `После подписки попробуй снова!`,
-      { parse_mode: 'HTML', disable_web_page_preview: true }
+      `⚠️ <b>Для использования бота подпишись:</b>`,
+      { 
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [
+            ...channelButtons,
+            [{ text: '✅ Я подписался', callback_data: 'check_subscription' }]
+          ]
+        }
+      }
     );
     return false;
   }
