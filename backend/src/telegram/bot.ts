@@ -112,6 +112,13 @@ async function checkAndNotifyAccess(chatId: number, userId: number): Promise<boo
 export function initializeBot() {
   console.log('✓ Бот запущен');
 
+  // Установка команд для меню бота
+  bot.setMyCommands([
+    { command: 'start', description: '🚀 Запустить бота' },
+    { command: 'menu', description: '📋 Главное меню' },
+    { command: 'promo', description: '🎁 Активировать промокод' },
+  ]);
+
   // ==================== КОМАНДЫ ====================
 
   bot.onText(/\/start/, async (msg) => {
@@ -921,11 +928,9 @@ async function handleAdminStats(chatId: number, telegramId: string) {
     `⭐ Активных подписок: <b>${stats.activeSubscriptions}</b>\n` +
     `💰 Всего платежей: <b>${stats.totalPayments}</b>\n` +
     `🌟 Заработано звёзд: <b>${stats.totalStarsEarned}</b>\n\n` +
-    `📈 Всего анализов: <b>${stats.totalAnalyses}</b>\n` +
-    `🍽 Всего приёмов пищи: <b>${stats.totalMeals}</b>\n\n` +
+    `📈 Всего анализов: <b>${stats.totalAnalyses}</b>\n\n` +
     `📅 Сегодня:\n` +
-    `• Новых юзеров: ${stats.todayUsers}\n` +
-    `• Приёмов пищи: ${stats.todayMeals}`,
+    `• Новых юзеров: ${stats.todayUsers}`,
     { parse_mode: 'HTML' }
   );
 }
