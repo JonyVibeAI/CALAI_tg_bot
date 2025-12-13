@@ -20,6 +20,8 @@ export async function getBotStats(): Promise<{
     paymentsData,
     analysesData,
     todayUsers,
+    totalMeals,
+    todayMeals,
   ] = await Promise.all([
     // Всего пользователей
     prisma.user.count(),
@@ -44,6 +46,14 @@ export async function getBotStats(): Promise<{
     prisma.user.count({
       where: { createdAt: { gte: todayStart } },
     }),
+
+    // Всего приёмов пищи
+    prisma.meal.count(),
+    
+    // Приёмов пищи сегодня
+    prisma.meal.count({
+      where: { createdAt: { gte: todayStart } },
+    }),
   ]);
 
   return {
@@ -51,8 +61,10 @@ export async function getBotStats(): Promise<{
     activeSubscriptions,
     totalPayments: paymentsData._count,
     totalStarsEarned: paymentsData._sum.stars || 0,
+    totalMeals,
     totalAnalyses: analysesData._sum.totalAnalysesUsed || 0,
     todayUsers,
+    todayMeals,
   };
 }
 
