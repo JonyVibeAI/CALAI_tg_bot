@@ -6,8 +6,10 @@ export async function getBotStats(): Promise<{
   activeSubscriptions: number;
   totalPayments: number;
   totalStarsEarned: number;
+  totalMeals: number;
   totalAnalyses: number;
   todayUsers: number;
+  todayMeals: number;
 }> {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());

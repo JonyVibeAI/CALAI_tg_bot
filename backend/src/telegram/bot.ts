@@ -112,13 +112,6 @@ async function checkAndNotifyAccess(chatId: number, userId: number): Promise<boo
 export function initializeBot() {
   console.log('✓ Бот запущен');
 
-  // Установка команд для меню бота
-  bot.setMyCommands([
-    { command: 'start', description: '🚀 Запустить бота' },
-    { command: 'menu', description: '📋 Главное меню' },
-    { command: 'promo', description: '🎁 Активировать промокод' },
-  ]);
-
   // ==================== КОМАНДЫ ====================
 
   bot.onText(/\/start/, async (msg) => {
